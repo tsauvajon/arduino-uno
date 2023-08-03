@@ -13,13 +13,22 @@ use mfrc522::{
     Initialized, Mfrc522,
 };
 
-pub fn init(
+use crate::println;
+
+pub struct Rfid {
+    rc522: Mfrc522<SpiInterface<Spi, ChipSelectPin<PB2>, DummyDelay>, Initialized>,
+}
+
+const CARD_UID: [u8; 4] = [227, 134, 36, 51];
+const TAG_UID: [u8; 4] = [106, 3, 45, 105];
+
+pub fn new(
     spi: SPI,
     sclk: Pin<Output, PB5>,
     mosi: Pin<Output, PB3>,
     miso: Pin<Input<PullUp>, PB4>,
     cs: Pin<Output, PB2>,
-) -> Mfrc522<SpiInterface<Spi, ChipSelectPin<PB2>, DummyDelay>, Initialized> {
+) -> Rfid {
     let (spi, nss) = arduino_hal::Spi::new(
         spi,
         sclk,
@@ -38,5 +47,30 @@ pub fn init(
     let rfid = mfrc522::Mfrc522::new(comm);
     arduino_hal::delay_us(200);
 
-    rfid.init().unwrap()
+    Rfid {
+        rc522: rfid.init().unwrap(),
+    }
+}
+
+impl Rfid {
+    pub fn version(&mut self) -> u8 {
+        self.rc522.version().unwrap()
+    }
+
+    pub fn read(&mut self) {
+        if let Ok(atqa) = self.rc522.new_card_present() {
+            if let Ok(uid) = self.rc522.select(&atqa) {
+                if uid.as_bytes() == CARD_UID {
+                    println!("CARD");
+                } else if uid.as_bytes() == TAG_UID {
+                    println!("TAG");
+                } else {
+                    println!("Unknown UID: {:?}", uid.as_bytes());
+                }
+
+                // let data = m.mf_read(1)?;
+                // println!("read {:?}", data);
+            }
+        }
+    }
 }

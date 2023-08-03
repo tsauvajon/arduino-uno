@@ -14,7 +14,7 @@ pub fn init(serial: Usart) {
 macro_rules! println {
     ($($arg:tt)*) => {
         ::avr_device::interrupt::free(|cs| {
-            if let Some(serial) = &mut *crate::serial::GLOBAL_SERIAL.borrow(cs).borrow_mut() {
+            if let Some(serial) = &mut *$crate::serial::GLOBAL_SERIAL.borrow(cs).borrow_mut() {
                 let _ = ::ufmt::uwriteln!(serial, $($arg)*);
             }
         })
