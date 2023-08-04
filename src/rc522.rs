@@ -10,10 +10,9 @@ use arduino_hal::{
 use avr_device::atmega328p::SPI;
 use mfrc522::{
     comm::eh02::spi::{DummyDelay, SpiInterface},
-    Initialized, Mfrc522,
+    Initialized, Mfrc522, Uid,
 };
-
-use crate::println;
+use ufmt::uDebug;
 
 pub struct Rfid {
     rc522: Mfrc522<SpiInterface<Spi, ChipSelectPin<PB2>, DummyDelay>, Initialized>,
@@ -57,19 +56,44 @@ impl Rfid {
         self.rc522.version().unwrap()
     }
 
-    pub fn read(&mut self) {
+    pub fn read(&mut self) -> Option<Found> {
         if let Ok(atqa) = self.rc522.new_card_present() {
             if let Ok(uid) = self.rc522.select(&atqa) {
                 if uid.as_bytes() == CARD_UID {
-                    println!("CARD");
+                    return Some(Found::Card);
                 } else if uid.as_bytes() == TAG_UID {
-                    println!("TAG");
+                    return Some(Found::Tag);
                 } else {
-                    println!("Unknown UID: {:?}", uid.as_bytes());
+                    return Some(Found::Unknown(uid));
                 }
 
                 // let data = m.mf_read(1)?;
                 // println!("read {:?}", data);
+            }
+        }
+
+        None
+    }
+}
+
+pub enum Found {
+    Tag,
+    Card,
+    Unknown(Uid),
+}
+
+impl uDebug for Found {
+    fn fmt<W>(&self, f: &mut ufmt::Formatter<'_, W>) -> Result<(), W::Error>
+    where
+        W: ufmt::uWrite + ?Sized,
+    {
+        match self {
+            Found::Tag => f.write_str("Tag"),
+            Found::Card => f.write_str("Card"),
+            Found::Unknown(uid) => {
+                f.write_str("Unknown(")?;
+                ufmt::uwrite!(f, "{:?}", uid.as_bytes())?;
+                f.write_str(")")
             }
         }
     }

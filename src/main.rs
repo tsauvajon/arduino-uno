@@ -31,13 +31,19 @@ fn main() -> ! {
     println!("Serial initialised!");
     arduino_hal::delay_us(200);
 
+    arduino_hal::delay_ms(1000);
+    let _ = pins.d9.into_output_high();
+    arduino_hal::delay_us(200);
+
     let mut rfid = rc522::new(spi, sclk, mosi, miso, cs);
     arduino_hal::delay_us(200);
     println!("RC522 version: {}", rfid.version());
     arduino_hal::delay_us(200);
 
     loop {
-        rfid.read();
+        if let Some(found) = rfid.read() {
+            println!("{:?}", found);
+        };
         arduino_hal::delay_us(200);
     }
 }
